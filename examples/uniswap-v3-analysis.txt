@@ -1,0 +1,87 @@
+- Analyzing contract...
+[32minfo[39m: Fetching contract info for 0xE592427A0AEce92De3Edee1F18E0157C05861564 on mainnet {"timestamp":"2025-10-24T20:26:15.955Z"}
+[32minfo[39m: Fetching transactions for 0xE592427A0AEce92De3Edee1F18E0157C05861564 on mainnet {"timestamp":"2025-10-24T20:26:16.991Z"}
+[31merror[39m: Failed to fetch transactions for 0xE592427A0AEce92De3Edee1F18E0157C05861564 {"error":"Request failed with status code 422","stack":"AxiosError: Request failed with status code 422\n    at settle (/home/draxxy/eth-online/chainsage-ai/node_modules/axios/dist/node/axios.cjs:2097:12)\n    at IncomingMessage.handleStreamEnd (/home/draxxy/eth-online/chainsage-ai/node_modules/axios/dist/node/axios.cjs:3305:11)\n    at IncomingMessage.emit (node:events:531:35)\n    at endReadableNT (node:internal/streams/readable:1698:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)\n    at Axios.request (/home/draxxy/eth-online/chainsage-ai/node_modules/axios/dist/node/axios.cjs:4483:41)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async BlockscoutClient.getTransactions (/home/draxxy/eth-online/chainsage-ai/dist/core/blockscout-client.js:116:30)\n    at async Command.<anonymous> (/home/draxxy/eth-online/chainsage-ai/dist/cli/index.js:46:28)","timestamp":"2025-10-24T20:26:17.208Z"}
+[33mwarn[39m: Could not fetch transactions: Failed to fetch transactions: Request failed with status code 422 {"timestamp":"2025-10-24T20:26:17.208Z"}
+[33mwarn[39m: Failed to parse AI response as JSON, using raw text {"timestamp":"2025-10-24T20:26:50.748Z"}
+✔ Analysis complete!
+
+═══════════════════════════════════════════════════════
+📊 CONTRACT ANALYSIS REPORT
+═══════════════════════════════════════════════════════
+
+Contract: SwapRouter
+Address: 0xE592427A0AEce92De3Edee1F18E0157C05861564
+Verified: ✓ Yes
+Transactions: 0
+Security Score: 50/100
+
+📝 Summary:
+```json
+{
+  "summary": "The `SwapRouter` contract is a core component of the Uniswap V3 ecosystem, acting as an aggregated interface for users to interact with Uniswap V3 liquidity pools. It facilitates various types of token swaps, manages Wrapped Ether (WETH) conversions, and provides utility functions for gas-efficient operations and transaction batching. Its design integrates deeply with the Uniswap V3 architecture, including its unique callback mechanism for swaps.",
+  "functionality": [
+    "**Token Swapping:** Supports `exactInput`, `exactInputSingle`, `exactOutput`, and `exactOutputSingle` functions, allowing users to swap a precise amount of input tokens for output tokens, or receive a precise amount of output tokens by providing a minimum input amount. These swaps can be single-hop or multi-hop across different Uniswap V3 pools.",
+    "**WETH Management:** Provides `WETH9()` to retrieve the WETH contract address, and `unwrapWETH9()` (with and without fee options) to convert WETH back to native ETH, and implicitly handles wrapping ETH to WETH for swaps.",
+    "**Transaction Batching (Multicall):** The `multicall()` function enables users to execute multiple operations (e.g., approve, swap, unwrap) within a single transaction, improving efficiency and atomicity.",
+    "**Gas-Efficient Approvals (Permit):** Functions like `selfPermit`, `selfPermitAllowed`, `selfPermitIfNecessary`, and `selfPermitAllowedIfNecessary` leverage EIP-2612 `permit` signatures to allow the router to spend tokens without requiring a separate, prior `approve` transaction, saving gas for users.",
+    "**Uniswap V3 Integration:** The `uniswapV3SwapCallback()` function is a crucial part of the Uniswap V3 architecture, designed to be called by Uniswap V3 pools during a swap to pull tokens from or push tokens to the router.",
+    "**Factory Access:** The `factory()` function returns the address of the Uniswap V3 Factory contract, essential for discovering and interacting with liquidity pools.",
+    "**ETH Refund:** `refundETH()` allows the contract to send any excess native ETH back to the caller, typically after a swap where WETH was unwrapped or more ETH was sent than required.",
+    "**Token Recovery:** `sweepToken()` and `sweepTokenWithFee()` functions are included for recovering tokens that might have been accidentally sent to the router contract, typically restricted to authorized administrators."
+  ],
+  "risks": [
+    {
+      "severity": "medium",
+      "category": "External / Environmental",
+      "description": "Like all DEX swap mechanisms, transactions initiated through the router are susceptible to front-running and sandwich attacks. Malicious actors can observe pending transactions, front-run them to manipulate prices, and then back-run them to profit from the price difference, especially when users set high slippage tolerances.",
+      "recommendation": "Users should be advised to set realistic but tight slippage tolerances. Integrators can explore MEV-resistant transaction relayers or private transaction pools to mitigate this risk for their users."
+    },
+    {
+      "severity": "low",
+      "category": "Contract Interaction / Logic",
+      "description": "While Uniswap V3's callback mechanism (`uniswapV3SwapCallback`) is designed with reentrancy guards, any custom modifications or unexpected interactions within the `multicall` function could potentially reintroduce reentrancy vulnerabilities if not meticulously audited. Given it's a standard Uniswap router, this risk is generally considered very low for the core implementation.",
+      "recommendation": "Ensure no custom logic introduced within the router or its integrated contracts could lead to reentrancy. Strictly adhere to Checks-Effects-Interactions pattern for any external calls."
+    },
+    {
+      "severity": "medium",
+      "category": "Access Control",
+      "description": "The `sweepToken` and `sweepTokenWithFee` functions, if not properly restricted to a trusted role (e.g., owner, multisig governance), could allow unauthorized draining of tokens accidentally sent to the contract. Without the full source code, the exact access control mechanism cannot be verified.",
+      "recommendation": "Access to `sweepToken` and `sweepTokenWithFee` functions must be strictly controlled, ideally limited to a multi-signature wallet or a well-secured governance mechanism to prevent misuse."
+    },
+    {
+      "severity": "low",
+      "category": "User Error",
+      "description": "Users providing insufficient input amounts or specifying slippage tolerances that are too high can result in transactions failing or significant value loss due to price volatility or MEV during swaps. While not a contract flaw, it's a common issue amplified by router interfaces.",
+      "recommendation": "Client-side applications interacting with the router should provide clear UI/UX for setting slippage, offering reasonable defaults, and warning users about the implications of high slippage. Implement robust pre-flight checks for transaction parameters."
+    }
+  ],
+  "optimizations": [
+    {
+      "category": "Design & Architecture",
+      "description": "The Uniswap V3 `SwapRouter` is inherently optimized through its use of a highly efficient pathfinding algorithm for multi-hop swaps and its integration with the concentrated liquidity model, which reduces gas costs for liquidity providers and traders by focusing liquidity where it's most active. The `multicall` function also provides a significant gas saving by batching multiple transactions into one.",
+      "impact": "High",
+      "implementation": "This is an inherent design feature of the Uniswap V3 router. Users leverage this by combining multiple operations (e.g., approvals, swaps, unwrapping ETH) into a single `multicall` transaction."
+    },
+    {
+      "category": "User-Side Interaction",
+      "description": "The `selfPermitIfNecessary` function allows users to save gas by only executing a token `permit` if the current allowance is insufficient for the intended operation. This avoids unnecessary `permit` calls when an allowance is already set.",
+      "impact": "Medium",
+      "implementation": "Client applications should prefer calling `selfPermitIfNecessary` over `selfPermit` when integrating, and users should be educated to use this function when available, especially for tokens supporting EIP-2612."
+    },
+    {
+      "category": "Solidity Best Practices",
+      "description": "Assuming standard Uniswap V3 router implementation, constant addresses like `WETH9` and `factory` are typically declared as `immutable` or `constant` variables, leading to gas savings by embedding their values directly into the bytecode rather than loading them from storage during runtime.",
+      "impact": "Low",
+      "implementation": "This is an internal contract optimization. For custom routers, always declare fixed addresses and values as `constant` or `immutable`."
+    }
+  ],
+  "behaviorInsights": [
+    "The contract currently has 0 transactions, as per the provided information. Therefore, no behavioral insights based on transaction patterns can be derived at this time. Analysis would typically involve examining common swap pairs, gas usage trends, frequency of multicall usage, and interaction patterns with specific liquidity pools."
+  ],
+  "securityScore": 95
+}
+```
+
+═══════════════════════════════════════════════════════
+
