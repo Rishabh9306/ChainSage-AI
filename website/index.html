@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChainSage AI - AI-Powered Smart Contract Security Analysis</title>
+    <meta name="description" content="Analyze any smart contract in 30 seconds with AI. Free, multi-chain, production-ready security analysis.">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Hero Section */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: white;
+            padding: 80px 20px;
+        }
+
+        .hero h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .hero .tagline {
+            font-size: 1.5rem;
+            margin-bottom: 40px;
+            opacity: 0.95;
+        }
+
+        .hero .stats {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin: 40px 0;
+            flex-wrap: wrap;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            display: block;
+        }
+
+        .stat-label {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+
+        .cta-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 40px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 15px 40px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: 50px;
+            text-decoration: none;
+            display: inline-block;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+
+        .btn-primary {
+            background: white;
+            color: #667eea;
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: white;
+            border: 2px solid white;
+        }
+
+        /* Features Section */
+        .features {
+            background: white;
+            padding: 100px 20px;
+        }
+
+        .features h2 {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 60px;
+            color: #667eea;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 40px;
+            margin-top: 40px;
+        }
+
+        .feature-card {
+            background: #f8f9fa;
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+        }
+
+        .feature-icon {
+            font-size: 3rem;
+            margin-bottom: 20px;
+        }
+
+        .feature-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .feature-card p {
+            color: #666;
+            line-height: 1.8;
+        }
+
+        /* Demo Section */
+        .demo {
+            background: #f8f9fa;
+            padding: 100px 20px;
+            text-align: center;
+        }
+
+        .demo h2 {
+            font-size: 2.5rem;
+            margin-bottom: 40px;
+            color: #667eea;
+        }
+
+        .terminal {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: left;
+            font-family: 'Courier New', monospace;
+            max-width: 800px;
+            margin: 0 auto;
+            overflow-x: auto;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+
+        .terminal .command {
+            color: #569cd6;
+        }
+
+        .terminal .output {
+            color: #4ec9b0;
+            margin-top: 10px;
+        }
+
+        .terminal .success {
+            color: #00ff00;
+        }
+
+        .terminal .warning {
+            color: #ffa500;
+        }
+
+        /* Try Now Section */
+        .try-now {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 100px 20px;
+            color: white;
+            text-align: center;
+        }
+
+        .try-now h2 {
+            font-size: 2.5rem;
+            margin-bottom: 30px;
+        }
+
+        .install-code {
+            background: rgba(0,0,0,0.3);
+            padding: 20px 40px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 1.2rem;
+            margin: 30px auto;
+            max-width: 600px;
+        }
+
+        /* Footer */
+        footer {
+            background: #1a1a1a;
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+        }
+
+        footer a {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+
+            .hero .tagline {
+                font-size: 1.2rem;
+            }
+
+            .features h2, .demo h2, .try-now h2 {
+                font-size: 2rem;
+            }
+
+            .cta-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .btn {
+                width: 100%;
+                max-width: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <h1>🧠 ChainSage AI</h1>
+            <p class="tagline">AI-Powered Smart Contract Security Analysis in 30 Seconds</p>
+            
+            <div class="stats">
+                <div class="stat">
+                    <span class="stat-number">30s</span>
+                    <span class="stat-label">Analysis Time</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-number">8+</span>
+                    <span class="stat-label">EVM Chains</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-number">100%</span>
+                    <span class="stat-label">Free Forever</span>
+                </div>
+            </div>
+
+            <div class="cta-buttons">
+                <a href="#try-now" class="btn btn-primary">Try It Now</a>
+                <a href="https://github.com/Rishabh9306/ChainSage-AI" class="btn btn-secondary" target="_blank">View on GitHub</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features">
+        <div class="container">
+            <h2>Why ChainSage AI?</h2>
+            
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">⚡</div>
+                    <h3>Lightning Fast</h3>
+                    <p>Analyze any smart contract in 30 seconds. What takes expert auditors hours, ChainSage does instantly using advanced AI reasoning.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">🤖</div>
+                    <h3>AI-Powered Insights</h3>
+                    <p>Powered by Google Gemini 2.5, ChainSage detects vulnerabilities, suggests optimizations, and explains complex code in natural language.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">🌍</div>
+                    <h3>Multi-Chain Support</h3>
+                    <p>Works on Ethereum, Optimism, Base, Arbitrum, and more. One tool for all your EVM chains.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">🛡️</div>
+                    <h3>Security First</h3>
+                    <p>Detects reentrancy, access control issues, integer overflows, gas inefficiencies, and upgrade vulnerabilities automatically.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">💰</div>
+                    <h3>100% Free</h3>
+                    <p>No credit card, no trial period, no limits. Powered by Gemini's generous free tier. Analyze unlimited contracts.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">🔓</div>
+                    <h3>Open Source</h3>
+                    <p>MIT licensed, production-ready TypeScript. Fork it, contribute, or use it however you want. Community-driven development.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Demo Section -->
+    <section class="demo">
+        <div class="container">
+            <h2>See It In Action</h2>
+            <p style="margin-bottom: 40px; font-size: 1.2rem; color: #666;">Analyzing USDC ($50B stablecoin) in real-time</p>
+            
+            <div class="terminal">
+                <div class="command">$ npx chainsage analyze 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48 --network mainnet</div>
+                <div class="output">
+⠦ Running AI analysis...
+✔ Analysis complete!
+
+═══════════════════════════════════════
+📊 CONTRACT ANALYSIS REPORT
+═══════════════════════════════════════
+
+Contract: <span class="success">FiatTokenProxy</span>
+Security Score: <span class="warning">65/100</span>
+
+<span class="warning">⚠️ Critical Issues: 1</span>
+<span class="warning">⚠️ High Issues: 2</span>
+<span class="success">✓ Passed Checks: 8</span>
+
+🔍 Key Findings:
+• Admin Control Centralization (Critical)
+• Upgrade Vulnerabilities (High)
+• Reentrancy Risk via upgradeToAndCall (Medium)
+
+💡 AI Insight:
+"This upgradeable proxy pattern requires robust
+ multi-signature control and thorough upgrade audits
+ to prevent potential exploits..."
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Try Now Section -->
+    <section class="try-now" id="try-now">
+        <div class="container">
+            <h2>Ready to Secure Your Contracts?</h2>
+            <p style="font-size: 1.2rem; margin-bottom: 30px;">Get started in 60 seconds</p>
+            
+            <div class="install-code">
+                npm install -g chainsage-ai
+            </div>
+
+            <p style="margin: 30px 0;">Then analyze any contract:</p>
+            
+            <div class="install-code">
+                npx chainsage analyze YOUR_CONTRACT_ADDRESS --network mainnet
+            </div>
+
+            <div class="cta-buttons" style="margin-top: 50px;">
+                <a href="https://github.com/Rishabh9306/ChainSage-AI#quick-start" class="btn btn-primary" target="_blank">View Documentation</a>
+                <a href="https://github.com/Rishabh9306/ChainSage-AI" class="btn btn-secondary" target="_blank">Star on GitHub ⭐</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <p>&copy; 2025 ChainSage AI. Open source under MIT License.</p>
+            <p style="margin-top: 10px;">
+                <a href="https://github.com/Rishabh9306/ChainSage-AI">GitHub</a> • 
+                <a href="https://github.com/Rishabh9306/ChainSage-AI/blob/main/HACKATHON.md">Hackathon Submission</a> • 
+                <a href="https://github.com/Rishabh9306/ChainSage-AI/blob/main/SECURITY.md">Security</a>
+            </p>
+            <p style="margin-top: 20px; opacity: 0.7;">Built with ❤️ for ETHOnline 2025</p>
+        </div>
+    </footer>
+</body>
+</html>

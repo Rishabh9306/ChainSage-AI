@@ -1,0 +1,47 @@
+name: ChainSage Security Analysis
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'contracts/**'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'contracts/**'
+
+jobs:
+  security-analysis:
+    runs-on: ubuntu-latest
+    name: Analyze Smart Contracts
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run ChainSage Analysis
+        uses: ./.github/actions/chainsage
+        with:
+          contracts: 'contracts/**/*.sol'
+          network: 'sepolia'
+          gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
+          fail-on-critical: 'false'
+          output-format: 'markdown'
+
+      - name: Upload Security Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-report
+          path: chainsage-report.txt
+          
+      - name: Comment PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '🧠 **ChainSage Security Analysis Complete!**\n\nCheck the Actions tab for the full security report.'
+            })

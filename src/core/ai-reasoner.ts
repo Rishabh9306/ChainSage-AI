@@ -103,6 +103,18 @@ export class AIReasoner {
   }
 
   /**
+   * Generate text using LLM (generic method for custom prompts)
+   */
+  public async generateText(prompt: string): Promise<string> {
+    try {
+      return await this.complete(prompt);
+    } catch (error: any) {
+      logger.error('Failed to generate text', error);
+      throw new Error(`Text generation failed: ${error.message}`);
+    }
+  }
+
+  /**
    * Complete an LLM request
    */
   private async complete(prompt: string): Promise<string> {
