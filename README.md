@@ -61,6 +61,10 @@ npx chainsage analyze 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48 --network mainn
 | ⚙️ **Local Simulation** | Run Solidity tests, traces, and gas analysis using Hardhat 3 (Rust-powered, multichain). |
 | 🔍 **On-Chain Analytics** | Fetch real contract & wallet data via Blockscout MCP's multichain intelligence tools. |
 | 🧠 **AI Reasoning Engine** | LLM agent (local or cloud) that interprets both datasets, explains contract logic, and compares outcomes. |
+| 📦 **Batch Analysis** | Analyze multiple contracts at once with aggregate statistics. |
+| 🎯 **Interactive Mode** | Guided wizard for easier CLI usage - perfect for demos! |
+| 🔧 **Automated Fixes** | AI-generated code fixes for detected vulnerabilities. |
+| ⚙️ **GitHub Actions** | CI/CD security analysis for your contracts. |
 | 🪞 **Reality vs Simulation** | Shows how your simulated contract differs from real-world deployment behavior. |
 | 🧰 **OP Stack Ready** | Use Hardhat 3's OP-Stack simulation to test cross-rollup contracts. |
 | 🗣️ **Explain Transactions** | "Explain this tx hash" → AI describes function calls, value flow, and possible intent. |
@@ -95,20 +99,111 @@ flowchart TD
 
 ### 🧪 Analyze a Smart Contract
 ```bash
-chainsage analyze 0xContractAddress
+npx chainsage analyze 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48 -n ethereum
 ```
 
 **AI Output:**
 ```
-✅ Contract Verified: UniswapV3Pool
-🔍 Activity Summary:
-  - 2,041 transactions in last 30 days
-  - Major counterparties: UniswapRouter, BinanceHotWallet
-🧠 AI Insight:
-  "This contract implements a liquidity pool with swap and fee collection logic.
-   Your Hardhat simulation matched real behavior with 97% consistency."
-⚠️ Risk Note:
-  Detected a gas anomaly in function swapExactTokensForTokens().
+✅ Contract Verified: USD Coin
+🔍 Security Score: 65/100
+⚠️ Risks Identified: 3
+
+CRITICAL RISKS:
+  1. Admin Control Risk - Contract has centralized admin functions
+  2. Upgrade Mechanism - Implementation can be changed
+  
+HIGH RISKS:
+  3. Reentrancy Vulnerability - External calls before state changes
+
+🧠 AI Insight: "This proxy contract implements upgradeability via admin-controlled
+   implementation changes. Consider implementing timelock delays for upgrades."
+```
+
+### 📦 Batch Analysis
+```bash
+# Create a file with contract addresses
+cat > contracts.txt << EOF
+0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
+0xdAC17F958D2ee523a2206206994597C13D831ec7
+0x6B175474E89094C44Da98b954EedeAC495271d0F
+EOF
+
+npx chainsage batch contracts.txt -n ethereum -o results.json
+```
+
+**Output:**
+```
+═══════════════════════════════════════════════════════
+📊 BATCH ANALYSIS SUMMARY
+═══════════════════════════════════════════════════════
+
+Total Contracts: 3
+Successful: 3
+Failed: 0
+Average Security Score: 72/100
+Total Critical Issues: 2
+Total High Issues: 5
+
+Results saved to: results.json
+═══════════════════════════════════════════════════════
+```
+
+### 🎯 Interactive Mode
+```bash
+npx chainsage interactive
+```
+
+**Guided Wizard:**
+```
+🧠 ChainSage AI - Interactive Mode
+
+What would you like to analyze?
+1. Smart Contract
+2. Transaction
+3. Compare Simulation vs Reality
+
+Enter your choice (1-3): 1
+Enter contract address: 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
+Enter network: ethereum
+
+🔍 Starting analysis...
+✓ Contract: USD Coin
+✓ Security Score: 65/100
+⚠ Risks: 3 found
+```
+
+### 🔧 Automated Fix Suggestions
+```bash
+npx chainsage fix 0xYourContract -n ethereum -o fixes.json
+```
+
+**Output:**
+```
+═══════════════════════════════════════════════════════
+🔧 AUTOMATED FIX SUGGESTIONS
+═══════════════════════════════════════════════════════
+
+1. Reentrancy Vulnerability
+   Severity: CRITICAL
+
+   Original Code:
+   function withdraw(uint amount) public {
+       require(balances[msg.sender] >= amount);
+       msg.sender.call{value: amount}("");
+       balances[msg.sender] -= amount;
+   }
+
+   Fixed Code:
+   function withdraw(uint amount) public nonReentrant {
+       require(balances[msg.sender] >= amount);
+       balances[msg.sender] -= amount; // State change first!
+       (bool success, ) = msg.sender.call{value: amount}("");
+       require(success, "Transfer failed");
+   }
+
+   Best Practices:
+   • Use OpenZeppelin's ReentrancyGuard
+   • Follow Checks-Effects-Interactions pattern
 ```
 
 ### 🧱 Simulate Locally (Hardhat)
