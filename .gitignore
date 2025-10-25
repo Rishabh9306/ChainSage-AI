@@ -47,3 +47,11 @@ temp/
 reports/
 *.report.json
 *.report.html
+
+# Archived documentation
+.docs-archive/
+
+# Test outputs
+batch-test-results.json
+*-results.json
+test-*.txt

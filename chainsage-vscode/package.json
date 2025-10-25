@@ -1,0 +1,171 @@
+{
+  "name": "chainsage-ai",
+  "displayName": "ChainSage AI",
+  "description": "AI-powered smart contract security analysis directly in VS Code",
+  "version": "1.0.0",
+  "publisher": "chainsage",
+  "icon": "icon.png",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Linters",
+    "Other"
+  ],
+  "keywords": [
+    "solidity",
+    "ethereum",
+    "security",
+    "smart contracts",
+    "blockchain",
+    "audit",
+    "analysis",
+    "AI"
+  ],
+  "activationEvents": [
+    "onLanguage:solidity",
+    "onCommand:chainsage.analyzeFile",
+    "onCommand:chainsage.analyzeWorkspace"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "chainsage.analyzeFile",
+        "title": "ChainSage: Analyze Contract",
+        "icon": "$(shield)"
+      },
+      {
+        "command": "chainsage.analyzeWorkspace",
+        "title": "ChainSage: Analyze All Contracts"
+      },
+      {
+        "command": "chainsage.generateFixes",
+        "title": "ChainSage: Generate Fixes"
+      },
+      {
+        "command": "chainsage.configure",
+        "title": "ChainSage: Configure API Key"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "when": "resourceLangId == solidity",
+          "command": "chainsage.analyzeFile",
+          "group": "chainsage@1"
+        },
+        {
+          "when": "resourceLangId == solidity",
+          "command": "chainsage.generateFixes",
+          "group": "chainsage@2"
+        }
+      ],
+      "explorer/context": [
+        {
+          "when": "resourceExtname == .sol",
+          "command": "chainsage.analyzeFile",
+          "group": "chainsage"
+        }
+      ],
+      "editor/title": [
+        {
+          "when": "resourceLangId == solidity",
+          "command": "chainsage.analyzeFile",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "ChainSage AI",
+      "properties": {
+        "chainsage.geminiApiKey": {
+          "type": "string",
+          "default": "",
+          "description": "Gemini API Key for AI analysis",
+          "order": 1
+        },
+        "chainsage.autoAnalyze": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically analyze contracts on save",
+          "order": 2
+        },
+        "chainsage.showInlineWarnings": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show inline warnings in editor",
+          "order": 3
+        },
+        "chainsage.network": {
+          "type": "string",
+          "default": "ethereum",
+          "enum": [
+            "ethereum",
+            "sepolia",
+            "optimism",
+            "base",
+            "arbitrum"
+          ],
+          "description": "Default network for contract analysis",
+          "order": 4
+        }
+      }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "chainsage",
+          "title": "ChainSage AI",
+          "icon": "resources/chainsage-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "chainsage": [
+        {
+          "id": "chainsage.securityView",
+          "name": "Security Analysis"
+        },
+        {
+          "id": "chainsage.vulnerabilitiesView",
+          "name": "Vulnerabilities"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js",
+    "package": "vsce package",
+    "publish": "vsce publish"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.80.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "@vscode/test-electron": "^2.3.3",
+    "eslint": "^8.45.0",
+    "typescript": "^5.1.6",
+    "vsce": "^2.15.0"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "axios": "^1.6.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Rishabh9306/ChainSage-AI"
+  },
+  "bugs": {
+    "url": "https://github.com/Rishabh9306/ChainSage-AI/issues"
+  },
+  "homepage": "https://github.com/Rishabh9306/ChainSage-AI#readme",
+  "license": "MIT"
+}
