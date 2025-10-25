@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Import ChainSage core modules directly instead of using CLI
+// Import ChainSage core modules directly
 import { BlockscoutClient } from '../../../lib/blockscout-client';
 import { AIReasoner } from '../../../lib/ai-reasoner';
-import { ContractAnalyzer } from '../../../lib/contract-analyzer';
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,18 +24,35 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const blockscoutClient = new BlockscoutClient();
-    const aiReasoner = new AIReasoner(geminiApiKey, 'gemini');
-    const analyzer = new ContractAnalyzer(blockscoutClient, aiReasoner);
+    // Set environment variable for config
+    process.env.GEMINI_API_KEY = geminiApiKey;
+    process.env.GEMINI_MODEL = 'gemini-2.5-flash-preview-05-20';
+    process.env.LLM_PROVIDER = 'gemini';
 
-    // Perform analysis
-    const result = await analyzer.analyze(address, network);
+    const blockscoutClient = new BlockscoutClient();
+    const aiReasoner = new AIReasoner();
+
+    // Fetch contract info
+    const contractInfo = await blockscoutClient.getContract(address, network);
+    const transactions = await blockscoutClient.getTransactions(address, network);
+
+    // Use AIReasoner's analyzeContract method
+    const result = await aiReasoner.analyzeContract({
+      address,
+      network,
+      name: contractInfo.name,
+      verified: contractInfo.verified,
+      sourceCode: contractInfo.sourceCode,
+      abi: contractInfo.abi,
+      compilerVersion: contractInfo.compilerVersion,
+      transactions: transactions.slice(0, 10) // Limit to 10 recent transactions
+    });
 
     // Extract data from result
     const securityScore = result.securityScore || 50;
     const vulnerabilities = result.risks || [];
     const summary = result.summary || 'Analysis complete.';
-    const functionality = result.functionality || [];
+    const functionality = result.keyFeatures || [];
     const optimizations = result.optimizations || [];
 
     return NextResponse.json({
