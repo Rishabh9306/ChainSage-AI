@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     let contractInfo: any = {};
     
     try {
-      const response = await axios.get(\`https://\${blockscoutUrl}/api/v2/smart-contracts/\${address}\`, {
+      const response = await axios.get(`https://${blockscoutUrl}/api/v2/smart-contracts/${address}`, {
         timeout: 10000
       });
       contractInfo = response.data;
@@ -46,12 +46,12 @@ export async function POST(request: NextRequest) {
       };
     }
 
-    const prompt = \`Analyze this Ethereum smart contract at address \${address} on \${network} network.
+    const prompt = `Analyze this Ethereum smart contract at address ${address} on ${network} network.
 
-Contract Name: \${contractInfo.name || 'Unknown'}
-Verified: \${contractInfo.is_verified ? 'Yes' : 'No'}
-\${contractInfo.source_code ? \`\\nSource Code:\\n\${contractInfo.source_code.substring(0, 5000)}\` : ''}
-\${contractInfo.abi ? \`\\nABI Functions: \${JSON.stringify(contractInfo.abi.slice(0, 10))}\` : ''}
+Contract Name: ${contractInfo.name || 'Unknown'}
+Verified: ${contractInfo.is_verified ? 'Yes' : 'No'}
+${contractInfo.source_code ? `\nSource Code:\n${contractInfo.source_code.substring(0, 5000)}` : ''}
+${contractInfo.abi ? `\nABI Functions: ${JSON.stringify(contractInfo.abi.slice(0, 10))}` : ''}
 
 Provide a comprehensive security analysis in JSON format with:
 {
@@ -61,7 +61,7 @@ Provide a comprehensive security analysis in JSON format with:
   "optimizations": [{"category": "type", "description": "optimization", "implementation": "how to"}],
   "behaviorInsights": ["observations"],
   "securityScore": 0-100
-}\`;
+}`;
 
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
@@ -71,8 +71,8 @@ Provide a comprehensive security analysis in JSON format with:
     const output = response.text();
 
     let parsedData: any = null;
-    const jsonMatch = output.match(/\`\`\`json\\s*([\\s\\S]*?)\\s*\`\`\`/) || 
-                     output.match(/\\{[\\s\\S]*"summary"[\\s\\S]*\\}/);
+    const jsonMatch = output.match(/```json\s*([\s\S]*?)\s*```/) || 
+                     output.match(/\{[\s\S]*"summary"[\s\S]*\}/);
     
     if (jsonMatch) {
       try {
