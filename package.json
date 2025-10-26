@@ -15,7 +15,7 @@
     "format": "prettier --write \"src/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\"",
     "setup": "node scripts/setup.js",
-    "clean": "rm -rf dist coverage .hardhat cache artifacts",
+    "clean": "node -e \"require('fs').rmSync('dist', {recursive:true, force:true}); require('fs').rmSync('coverage', {recursive:true, force:true}); require('fs').rmSync('.hardhat', {recursive:true, force:true}); require('fs').rmSync('cache', {recursive:true, force:true}); require('fs').rmSync('artifacts', {recursive:true, force:true});\"",
     "compile": "hardhat compile",
     "typechain": "hardhat typechain",
     "hardhat:node": "hardhat node",

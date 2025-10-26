@@ -243,32 +243,66 @@ chainsage compare 0xYourDeployedContract
 ### Prerequisites
 
 - Node.js ≥ 20
-- Hardhat 3 (v3.0.0+)
-- Blockscout MCP Server credentials
-- OpenAI / Local LLM (DeepSeek, Ollama, etc.)
+- npm ≥ 9
+- Gemini API key (free from https://aistudio.google.com/app/apikey)
 
-### Setup
+### Quick Setup
 
 ```bash
-git clone https://github.com/<your-username>/chainsage-ai
+# 1. Clone the repository
+git clone https://github.com/Rishabh9306/ChainSage-AI
 cd chainsage-ai
+
+# 2. Install dependencies
 npm install
-npm run setup
+
+# 3. Build the project (IMPORTANT!)
+npm run build
+
+# 4. Set up environment variables
+cp .env.example .env
+# Edit .env and add your API keys
+
+# 5. You're ready!
+npm start
 ```
+
+> ⚠️ **Important**: Always run `npm run build` after cloning or pulling changes!
+
+### For the Web App
+
+```bash
+cd web
+npm install
+cp .env.example .env.local
+# Edit .env.local and add: GEMINI_API_KEY=your_key_here
+npm run dev
+```
+
+Visit http://localhost:3000
+
+### For the VS Code Extension
+
+```bash
+cd chainsage-vscode
+npm install
+npm run package
+code --install-extension chainsage-ai-1.0.0.vsix
+```
+
+**📖 Detailed build instructions**: See [`BUILD_GUIDE.md`](BUILD_GUIDE.md)
 
 ### Environment Variables (`.env`)
 
 ```env
-# Blockscout MCP Configuration
+# Gemini AI (Required for analysis)
+GEMINI_API_KEY=your_gemini_api_key_here
+
+# Optional: Blockscout MCP Configuration
 BLOCKSCOUT_MCP_URL=https://mcp.blockscout.com
 BLOCKSCOUT_API_KEY=your_api_key_here
 
-# LLM Configuration
-LLM_PROVIDER=openai  # Options: openai, deepseek, ollama
-LLM_MODEL=gpt-4
-OPENAI_API_KEY=sk-...
-
-# Hardhat Configuration
+# Optional: Hardhat Configuration
 HARDHAT_NETWORK=sepolia
 INFURA_API_KEY=your_infura_key
 ETHERSCAN_API_KEY=your_etherscan_key

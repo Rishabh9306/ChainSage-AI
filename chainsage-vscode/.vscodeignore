@@ -10,6 +10,20 @@ vsc-extension-quickstart.md
 **/*.map
 **/*.ts
 !out/**/*.d.ts
-node_modules/**
+# Include production dependencies, exclude dev dependencies
+node_modules/**/test/**
+node_modules/**/*.md
+node_modules/**/.github/**
+node_modules/**/example/**
+node_modules/**/examples/**
+node_modules/**/*.d.ts
+node_modules/**/*.map
+# Exclude dev dependencies
+node_modules/@types/**
+node_modules/@typescript-eslint/**
+node_modules/@vscode/test-electron/**
+node_modules/eslint/**
+node_modules/typescript/**
+node_modules/vsce/**
 **/*.md
 !README.md

@@ -1,11 +1,11 @@
 import * as vscode from 'vscode';
-import { exec } from 'child_process';
-import { promisify } from 'util';
 import * as path from 'path';
-
-const execPromise = promisify(exec);
+import * as fs from 'fs';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { ChainSageWebviewProvider } from './webviewProvider';
 
 let diagnosticCollection: vscode.DiagnosticCollection;
+let webviewProvider: ChainSageWebviewProvider;
 
 export function activate(context: vscode.ExtensionContext) {
     console.log('ChainSage AI extension is now active!');
@@ -14,12 +14,24 @@ export function activate(context: vscode.ExtensionContext) {
     diagnosticCollection = vscode.languages.createDiagnosticCollection('chainsage');
     context.subscriptions.push(diagnosticCollection);
 
+    // Register webview provider
+    webviewProvider = new ChainSageWebviewProvider(context.extensionUri, context);
+    context.subscriptions.push(
+        vscode.window.registerWebviewViewProvider(
+            ChainSageWebviewProvider.viewType,
+            webviewProvider
+        )
+    );
+
     // Register commands
     context.subscriptions.push(
         vscode.commands.registerCommand('chainsage.analyzeFile', analyzeFile),
         vscode.commands.registerCommand('chainsage.analyzeWorkspace', analyzeWorkspace),
         vscode.commands.registerCommand('chainsage.generateFixes', generateFixes),
-        vscode.commands.registerCommand('chainsage.configure', configureApiKey)
+        vscode.commands.registerCommand('chainsage.configure', configureApiKey),
+        vscode.commands.registerCommand('chainsage.clearResults', () => {
+            webviewProvider.clearResults();
+        })
     );
 
     // Register on-save handler if auto-analyze is enabled
@@ -32,6 +44,16 @@ export function activate(context: vscode.ExtensionContext) {
         })
     );
 
+    // Reset rate limits daily
+    const now = new Date();
+    const lastReset = context.globalState.get<number>('lastRateLimitReset') || 0;
+    const oneDayMs = 24 * 60 * 60 * 1000;
+    
+    if (now.getTime() - lastReset > oneDayMs) {
+        webviewProvider.resetRateLimits();
+        context.globalState.update('lastRateLimitReset', now.getTime());
+    }
+
     // Show welcome message
     vscode.window.showInformationMessage('🧠 ChainSage AI is ready to analyze your smart contracts!');
 }
@@ -43,12 +65,15 @@ async function analyzeFile() {
         return;
     }
 
-    if (editor.document.languageId !== 'solidity') {
-        vscode.window.showErrorMessage('ChainSage only works with Solidity files');
+    // Check if file is a Solidity file by extension or language ID
+    const filePath = editor.document.fileName;
+    const isSolidityFile = filePath.endsWith('.sol') || editor.document.languageId === 'solidity';
+    
+    if (!isSolidityFile) {
+        vscode.window.showErrorMessage('ChainSage only works with Solidity files (.sol)');
         return;
     }
 
-    const filePath = editor.document.fileName;
     const config = vscode.workspace.getConfiguration('chainsage');
     const apiKey = config.get<string>('geminiApiKey');
 
@@ -71,18 +96,30 @@ async function analyzeFile() {
         progress.report({ message: 'Analyzing contract...' });
 
         try {
-            // Read the contract content
-            const content = editor.document.getText();
-            
             // Call ChainSage CLI or API
             const result = await analyzeContract(filePath, apiKey);
             
             // Parse and display results
             displayResults(result, editor.document);
             
-            vscode.window.showInformationMessage(
-                `✅ Analysis complete! Security Score: ${result.securityScore}/100`
-            );
+            // Add result to webview
+            webviewProvider.addAnalysisResult(filePath, result);
+            
+            // Increment rate limit for the model used
+            const config = vscode.workspace.getConfiguration('chainsage');
+            const selectedModel = config.get<string>('selectedModel') || 'gemini-2.5-flash';
+            await webviewProvider.incrementRateLimit(selectedModel);
+            
+            // Show appropriate message based on results
+            if (result.risks && result.risks.length > 0) {
+                vscode.window.showWarningMessage(
+                    `⚠️ Analysis complete! Found ${result.risks.length} issue(s). Security Score: ${result.securityScore}/100`
+                );
+            } else {
+                vscode.window.showInformationMessage(
+                    `✅ Analysis complete! No vulnerabilities found. Security Score: ${result.securityScore}/100`
+                );
+            }
         } catch (error: any) {
             vscode.window.showErrorMessage(
                 `ChainSage analysis failed: ${error.message}`
@@ -195,16 +232,17 @@ async function configureApiKey() {
 async function analyzeContract(filePath: string, apiKey: string): Promise<any> {
     // Analyze local Solidity file using Gemini API directly
     try {
-        const fs = require('fs');
-        
         // Read the contract file
         const contractContent = fs.readFileSync(filePath, 'utf8');
         const contractName = path.basename(filePath, '.sol');
         
+        // Get selected model from configuration
+        const config = vscode.workspace.getConfiguration('chainsage');
+        const selectedModel = config.get<string>('selectedModel') || 'gemini-2.5-flash';
+        
         // Call Gemini API directly for analysis
-        const { GoogleGenerativeAI } = require('@google/generative-ai');
         const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-preview-05-20' });
+        const model = genAI.getGenerativeModel({ model: selectedModel });
         
         const prompt = `Analyze this Solidity smart contract for security vulnerabilities, gas optimization opportunities, and best practices.
 
@@ -216,11 +254,17 @@ ${contractContent}
 
 Please provide:
 1. Security Score (0-100)
-2. Critical vulnerabilities (if any) - mark as [CRITICAL]
-3. High-risk issues (if any) - mark as [HIGH]
-4. Medium-risk issues (if any) - mark as [MEDIUM]
-5. Gas optimization suggestions
+2. Critical vulnerabilities (if any) - mark as [CRITICAL] and include line number like "Line 45:"
+3. High-risk issues (if any) - mark as [HIGH] and include line number like "Line 23:"
+4. Medium-risk issues (if any) - mark as [MEDIUM] and include line number like "Line 67:"
+5. Gas optimization suggestions with line numbers
 6. Best practice recommendations
+
+IMPORTANT: 
+- For each vulnerability, specify the exact line number where it occurs
+- Format: "Line X: [SEVERITY] Description"
+- If NO vulnerabilities are found, clearly state "No vulnerabilities found" and give a score of 100
+- Only report actual issues, do not create false positives
 
 Format your response with clear sections and severity markers.`;
 
@@ -238,13 +282,11 @@ Format your response with clear sections and severity markers.`;
 async function generateContractFixes(filePath: string, apiKey: string): Promise<any[]> {
     // Generate fixes using Gemini API directly
     try {
-        const fs = require('fs');
         const contractContent = fs.readFileSync(filePath, 'utf8');
         const contractName = path.basename(filePath, '.sol');
         
-        const { GoogleGenerativeAI } = require('@google/generative-ai');
         const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-preview-05-20' });
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-pro' });
         
         const prompt = `Analyze this Solidity contract and provide specific fix suggestions for any vulnerabilities or issues found.
 
@@ -285,6 +327,14 @@ function parseAnalysisOutput(output: string): any {
         recommendations: []
     };
     
+    // Check if no vulnerabilities found
+    if (output.toLowerCase().includes('no vulnerabilities found') || 
+        output.toLowerCase().includes('no issues found') ||
+        output.toLowerCase().includes('no security issues')) {
+        result.securityScore = 100;
+        return result;
+    }
+    
     for (const line of lines) {
         if (line.includes('Security Score:')) {
             const match = line.match(/(\d+)\/100/);
@@ -292,9 +342,14 @@ function parseAnalysisOutput(output: string): any {
                 result.securityScore = parseInt(match[1]);
             }
         } else if (line.includes('[CRITICAL]') || line.includes('[HIGH]') || line.includes('[MEDIUM]')) {
+            // Extract line number if present (format: "Line 45: [SEVERITY] description")
+            const lineNumMatch = line.match(/Line\s+(\d+)/i);
+            const lineNumber = lineNumMatch ? parseInt(lineNumMatch[1]) : 1;
+            
             result.risks.push({
                 severity: line.match(/\[(.*?)\]/)?.[1] || 'UNKNOWN',
-                description: line.replace(/\[.*?\]/, '').trim()
+                description: line.replace(/\[.*?\]/, '').replace(/Line\s+\d+:\s*/i, '').trim(),
+                line: lineNumber
             });
         }
     }
@@ -302,7 +357,7 @@ function parseAnalysisOutput(output: string): any {
     return result;
 }
 
-function parseFixesOutput(output: string): any[] {
+function parseFixesOutput(_output: string): any[] {
     // Parse fix suggestions from CLI output
     const fixes: any[] = [];
     // Implementation would parse the actual fix format
@@ -312,16 +367,31 @@ function parseFixesOutput(output: string): any[] {
 function displayResults(result: any, document: vscode.TextDocument) {
     const diagnostics: vscode.Diagnostic[] = [];
     
-    // Create diagnostics for each risk
-    for (const risk of result.risks) {
-        const severity = getSeverity(risk.severity);
-        const diagnostic = new vscode.Diagnostic(
-            new vscode.Range(0, 0, 0, 0),  // Would need actual line numbers
-            `ChainSage: ${risk.description}`,
-            severity
-        );
-        diagnostic.source = 'ChainSage AI';
-        diagnostics.push(diagnostic);
+    // Only create diagnostics if there are actual risks
+    if (result.risks && result.risks.length > 0) {
+        for (const risk of result.risks) {
+            const severity = getSeverity(risk.severity);
+            
+            // Use the line number from the risk, default to line 0 if not available
+            const lineNumber = (risk.line && risk.line > 0) ? risk.line - 1 : 0;
+            
+            // Get the actual line to create a proper range
+            let range: vscode.Range;
+            if (lineNumber < document.lineCount) {
+                const line = document.lineAt(lineNumber);
+                range = new vscode.Range(lineNumber, 0, lineNumber, line.text.length);
+            } else {
+                range = new vscode.Range(0, 0, 0, 0);
+            }
+            
+            const diagnostic = new vscode.Diagnostic(
+                range,
+                `ChainSage: ${risk.description}`,
+                severity
+            );
+            diagnostic.source = 'ChainSage AI';
+            diagnostics.push(diagnostic);
+        }
     }
     
     diagnosticCollection.set(document.uri, diagnostics);
