@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-import path from 'path';
-
-const execPromise = promisify(exec);
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import axios from 'axios';
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,83 +13,94 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Use the local ChainSage CLI instead of npm package
-    const projectRoot = path.resolve(process.cwd(), '..');
-    const command = `node ${projectRoot}/dist/cli/index.js analyze ${address} --network ${network}`;
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: 'API key not configured' },
+        { status: 500 }
+      );
+    }
+
+    const networkMap: Record<string, string> = {
+      ethereum: 'eth.blockscout.com',
+      sepolia: 'eth-sepolia.blockscout.com',
+      base: 'base.blockscout.com',
+      optimism: 'optimism.blockscout.com',
+      arbitrum: 'arbitrum.blockscout.com',
+      polygon: 'polygon.blockscout.com',
+    };
+
+    const blockscoutUrl = networkMap[network] || 'eth.blockscout.com';
+    let contractInfo: any = {};
     
-    const { stdout, stderr } = await execPromise(command, {
-      timeout: 120000, // 2 minutes timeout
-      cwd: projectRoot,
-      env: { ...process.env }
-    });
+    try {
+      const response = await axios.get(\`https://\${blockscoutUrl}/api/v2/smart-contracts/\${address}\`, {
+        timeout: 10000
+      });
+      contractInfo = response.data;
+    } catch (error) {
+      console.warn('Failed to fetch contract info, using fallback');
+      contractInfo = {
+        name: address.substring(0, 10) + '...',
+        is_verified: false
+      };
+    }
 
-    const output = stdout + stderr;
+    const prompt = \`Analyze this Ethereum smart contract at address \${address} on \${network} network.
 
-    // Strip ANSI color codes
-    const cleanOutput = stripAnsiCodes(output);
+Contract Name: \${contractInfo.name || 'Unknown'}
+Verified: \${contractInfo.is_verified ? 'Yes' : 'No'}
+\${contractInfo.source_code ? \`\\nSource Code:\\n\${contractInfo.source_code.substring(0, 5000)}\` : ''}
+\${contractInfo.abi ? \`\\nABI Functions: \${JSON.stringify(contractInfo.abi.slice(0, 10))}\` : ''}
 
-    // Try to extract JSON from the output
-    // Look for JSON between ```json and ``` markers first
-    let jsonMatch = cleanOutput.match(/```json\s*([\s\S]*?)\s*```/);
+Provide a comprehensive security analysis in JSON format with:
+{
+  "summary": "Brief overview",
+  "functionality": ["List of main functions"],
+  "risks": [{"severity": "critical|high|medium|low", "category": "type", "description": "issue", "recommendation": "fix"}],
+  "optimizations": [{"category": "type", "description": "optimization", "implementation": "how to"}],
+  "behaviorInsights": ["observations"],
+  "securityScore": 0-100
+}\`;
+
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+    
+    const result = await model.generateContent(prompt);
+    const response = result.response;
+    const output = response.text();
+
     let parsedData: any = null;
+    const jsonMatch = output.match(/\`\`\`json\\s*([\\s\\S]*?)\\s*\`\`\`/) || 
+                     output.match(/\\{[\\s\\S]*"summary"[\\s\\S]*\\}/);
     
     if (jsonMatch) {
       try {
-        parsedData = JSON.parse(jsonMatch[1]);
+        const jsonStr = jsonMatch[1] || jsonMatch[0];
+        parsedData = JSON.parse(jsonStr);
       } catch (e) {
-        console.error('Failed to parse JSON from code block:', e);
+        console.error('Failed to parse AI response as JSON:', e);
       }
     }
     
-    // If no code block, try to find raw JSON object
     if (!parsedData) {
-      // Find the first { and last } that contains "summary"
-      const firstBrace = cleanOutput.indexOf('{');
-      const summaryPos = cleanOutput.indexOf('"summary"');
-      
-      if (firstBrace !== -1 && summaryPos !== -1 && firstBrace < summaryPos) {
-        // Find matching closing brace
-        let braceCount = 0;
-        let startPos = firstBrace;
-        let endPos = -1;
-        
-        for (let i = startPos; i < cleanOutput.length; i++) {
-          if (cleanOutput[i] === '{') braceCount++;
-          if (cleanOutput[i] === '}') {
-            braceCount--;
-            if (braceCount === 0) {
-              endPos = i + 1;
-              break;
-            }
-          }
-        }
-        
-        if (endPos !== -1) {
-          try {
-            const jsonStr = cleanOutput.substring(startPos, endPos);
-            parsedData = JSON.parse(jsonStr);
-          } catch (e) {
-            console.error('Failed to parse extracted JSON:', e);
-          }
-        }
-      }
+      parsedData = {
+        summary: output.substring(0, 500),
+        securityScore: 50,
+        risks: [],
+        functionality: [],
+        optimizations: []
+      };
     }
-
-    // Parse the output to extract key information
-    const securityScore = parsedData?.securityScore || extractSecurityScore(cleanOutput);
-    const vulnerabilities = parsedData?.risks || extractVulnerabilities(cleanOutput);
-    const summary = parsedData?.summary || extractSummary(cleanOutput);
-    const functionality = parsedData?.functionality || [];
-    const optimizations = parsedData?.optimizations || [];
 
     return NextResponse.json({
       success: true,
-      securityScore,
-      vulnerabilities,
-      summary,
-      functionality,
-      optimizations,
-      rawOutput: cleanOutput
+      securityScore: parsedData.securityScore || 50,
+      vulnerabilities: parsedData.risks || [],
+      summary: parsedData.summary || 'Analysis complete',
+      functionality: parsedData.functionality || [],
+      optimizations: parsedData.optimizations || [],
+      rawOutput: output
     });
 
   } catch (error: any) {
@@ -102,37 +110,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
-
-function stripAnsiCodes(str: string): string {
-  // Remove ANSI escape codes (color codes)
-  return str.replace(/\x1b\[[0-9;]*m/g, '');
-}
-
-function extractSecurityScore(output: string): number {
-  const match = output.match(/Security Score:\s*(\d+)/i);
-  return match ? parseInt(match[1]) : 50;
-}
-
-function extractVulnerabilities(output: string): any[] {
-  const vulns: any[] = [];
-  const lines = output.split('\n');
-  
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    if (line.includes('CRITICAL') || line.includes('HIGH') || line.includes('MEDIUM')) {
-      vulns.push({
-        severity: line.includes('CRITICAL') ? 'CRITICAL' : line.includes('HIGH') ? 'HIGH' : 'MEDIUM',
-        title: line.trim(),
-        description: lines[i + 1]?.trim() || ''
-      });
-    }
-  }
-  
-  return vulns;
-}
-
-function extractSummary(output: string): string {
-  const summaryMatch = output.match(/Summary:(.*?)(?=\n\n|\nVulnerabilities:|\nSecurity Score:|$)/is);
-  return summaryMatch ? summaryMatch[1].trim() : 'Analysis complete. See full report below.';
 }
