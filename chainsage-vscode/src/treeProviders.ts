@@ -193,7 +193,6 @@ export class ResultItem extends vscode.TreeItem {
                     };
                 } catch (error) {
                     // Silently handle any URI errors
-                    console.error('Failed to create URI for:', filePath);
                 }
             }
         }

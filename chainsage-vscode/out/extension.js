@@ -43,7 +43,6 @@ const webviewProvider_1 = require("./webviewProvider");
 let diagnosticCollection;
 let webviewProvider;
 function activate(context) {
-    console.log('ChainSage AI extension is now active!');
     // Create diagnostic collection for inline warnings
     diagnosticCollection = vscode.languages.createDiagnosticCollection('chainsage');
     context.subscriptions.push(diagnosticCollection);
@@ -130,6 +129,15 @@ async function analyzeWorkspace() {
         vscode.window.showErrorMessage('No workspace folder found');
         return;
     }
+    const config = vscode.workspace.getConfiguration('chainsage');
+    const apiKey = config.get('geminiApiKey');
+    if (!apiKey) {
+        const action = await vscode.window.showWarningMessage('Gemini API Key not configured', 'Configure Now');
+        if (action === 'Configure Now') {
+            await configureApiKey();
+        }
+        return;
+    }
     await vscode.window.withProgress({
         location: vscode.ProgressLocation.Notification,
         title: 'ChainSage AI',
@@ -139,20 +147,35 @@ async function analyzeWorkspace() {
         try {
             // Find all .sol files
             const files = await vscode.workspace.findFiles('**/*.sol', '**/node_modules/**');
+            if (files.length === 0) {
+                vscode.window.showInformationMessage('No Solidity contracts found in workspace');
+                return;
+            }
             progress.report({ message: `Analyzing ${files.length} contracts...` });
             // Analyze each file
+            let analyzedCount = 0;
             for (let i = 0; i < files.length; i++) {
                 const file = files[i];
                 progress.report({
                     message: `Analyzing ${path.basename(file.fsPath)} (${i + 1}/${files.length})`
                 });
-                const document = await vscode.workspace.openTextDocument(file);
-                const config = vscode.workspace.getConfiguration('chainsage');
-                const apiKey = config.get('geminiApiKey') || '';
-                const result = await analyzeContract(file.fsPath, apiKey);
-                displayResults(result, document);
+                try {
+                    const document = await vscode.workspace.openTextDocument(file);
+                    const result = await analyzeContract(file.fsPath, apiKey);
+                    // Display results in editor
+                    displayResults(result, document);
+                    // Add result to webview
+                    webviewProvider.addAnalysisResult(file.fsPath, result);
+                    // Increment rate limit
+                    const selectedModel = config.get('selectedModel') || 'gemini-2.5-flash';
+                    await webviewProvider.incrementRateLimit(selectedModel);
+                    analyzedCount++;
+                }
+                catch (error) {
+                    // Continue with next file on error
+                }
             }
-            vscode.window.showInformationMessage(`✅ Analyzed ${files.length} contracts!`);
+            vscode.window.showInformationMessage(`✅ Analyzed ${analyzedCount} of ${files.length} contracts!`);
         }
         catch (error) {
             vscode.window.showErrorMessage(`Workspace analysis failed: ${error.message}`);

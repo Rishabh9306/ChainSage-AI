@@ -13,7 +13,10 @@ export class ChainSageWebviewProvider implements vscode.WebviewViewProvider {
 
     public addAnalysisResult(filePath: string, result: any) {
         this.analysisResults.set(filePath, result);
-        this.sendAnalysisResults();
+        // Wait a bit to ensure webview is ready
+        setTimeout(() => {
+            this.sendAnalysisResults();
+        }, 100);
     }
 
     public clearResults() {
@@ -62,11 +65,11 @@ export class ChainSageWebviewProvider implements vscode.WebviewViewProvider {
             }
         });
 
-        // Send initial data
-        this.sendContractsList();
-        this.sendApiKeyStatus();
-        this.sendModelStatus();
-        this.sendAnalysisResults();
+        // Send initial data with slight delays to ensure webview is ready
+        setTimeout(() => this.sendApiKeyStatus(), 50);
+        setTimeout(() => this.sendModelStatus(), 100);
+        setTimeout(() => this.sendContractsList(), 150);
+        setTimeout(() => this.sendAnalysisResults(), 200);
     }
 
     private async sendAnalysisResults() {
@@ -78,10 +81,12 @@ export class ChainSageWebviewProvider implements vscode.WebviewViewProvider {
                 ...result
             });
         }
-        this._view?.webview.postMessage({
-            command: 'updateAnalysisResults',
-            results: results
-        });
+        if (this._view) {
+            this._view.webview.postMessage({
+                command: 'updateAnalysisResults',
+                results: results
+            });
+        }
     }
 
     private async selectModel(model: string) {
@@ -461,23 +466,38 @@ export class ChainSageWebviewProvider implements vscode.WebviewViewProvider {
         .model-dropdown {
             width: 100%;
             padding: 12px 15px;
-            background-color: var(--vscode-editor-background);
-            color: var(--vscode-foreground);
+            background-color: var(--vscode-input-background);
+            color: var(--vscode-input-foreground);
             border: 1px solid var(--vscode-input-border);
             border-radius: 6px;
             font-size: 14px;
             cursor: pointer;
             outline: none;
             font-family: inherit;
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            background-image: url('data:image/svg+xml;charset=UTF-8,%3Csvg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12"%3E%3Cpath fill="%23666" d="M6 9L1 4h10z"/%3E%3C/svg%3E');
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 40px;
         }
 
         .model-dropdown:hover {
             border-color: #667eea;
+            background-color: var(--vscode-input-background);
         }
 
         .model-dropdown:focus {
             border-color: #667eea;
             box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+            background-color: var(--vscode-input-background);
+        }
+
+        .model-dropdown option {
+            background-color: var(--vscode-dropdown-background);
+            color: var(--vscode-dropdown-foreground);
+            padding: 8px;
         }
 
         .limit-bar {
@@ -701,12 +721,16 @@ export class ChainSageWebviewProvider implements vscode.WebviewViewProvider {
                     updateApiKeyStatus();
                     break;
                 case 'updateModelStatus':
-                    selectedModel = message.selectedModel;
-                    rateLimits = message.rateLimits;
+                    selectedModel = message.selectedModel || 'gemini-2.5-flash';
+                    rateLimits = message.rateLimits || {
+                        'gemini-2.5-pro': { used: 0, limit: 2 },
+                        'gemini-2.5-flash': { used: 0, limit: 10 },
+                        'gemini-2.0-flash-exp': { used: 0, limit: 10 }
+                    };
                     updateModelSelector();
                     break;
                 case 'updateAnalysisResults':
-                    analysisResults = message.results;
+                    analysisResults = message.results || [];
                     updateAnalysisResults();
                     break;
             }
@@ -823,16 +847,23 @@ export class ChainSageWebviewProvider implements vscode.WebviewViewProvider {
 
         function updateModelSelector() {
             const models = [
-                { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro' },
-                { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash' },
-                { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash (Experimental)' }
+                { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro (Advanced)' },
+                { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash (Recommended)' },
+                { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash Experimental' }
             ];
 
             const selectorDropdown = document.getElementById('modelSelector');
+            if (!selectorDropdown) {
+                return;
+            }
+            
             selectorDropdown.innerHTML = models.map(model => {
                 const isSelected = selectedModel === model.id;
                 return \`<option value="\${model.id}" \${isSelected ? 'selected' : ''}>\${model.name}</option>\`;
             }).join('');
+            
+            // Ensure the correct model is selected
+            selectorDropdown.value = selectedModel;
         }
 
         function selectModel(model) {
@@ -844,6 +875,19 @@ export class ChainSageWebviewProvider implements vscode.WebviewViewProvider {
 
         function updateAnalysisResults() {
             const resultsDiv = document.getElementById('analysisResults');
+            
+            // Update the analyzed counter based on actual results
+            const analysisCountEl = document.getElementById('analysisCount');
+            if (analysisCountEl) {
+                analysisCountEl.textContent = analysisResults.length;
+            }
+            
+            // Update the analyzedContracts set with all analyzed file paths
+            analysisResults.forEach(result => {
+                if (result.filePath) {
+                    analyzedContracts.add(result.filePath);
+                }
+            });
             
             if (analysisResults.length === 0) {
                 resultsDiv.innerHTML = \`
@@ -911,6 +955,7 @@ export class ChainSageWebviewProvider implements vscode.WebviewViewProvider {
         // Initial load
         setTimeout(() => {
             vscode.postMessage({ command: 'getContracts' });
+            updateModelSelector(); // Ensure model selector is populated on load
         }, 100);
     </script>
 </body>
